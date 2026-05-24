@@ -5,6 +5,8 @@ import "./App.css";
 function App() {
   const [studyNotes, setStudyNotes] = useState([]);
   const [search, setSearch] = useState("");
+  const [selectedNote, setSelectedNote] = useState(null);
+
   const [form, setForm] = useState({
     title: "",
     category: "",
@@ -52,6 +54,11 @@ function App() {
   const handleSearch = (e) => {
     setSearch(e.target.value);
     fetchStudyNotes(e.target.value);
+  };
+
+  const handleShowDetail = async (id) => {
+    const res = await axios.get(`http://localhost:8081/api/study-notes/${id}`);
+    setSelectedNote(res.data);
   };
 
   return (
@@ -113,8 +120,31 @@ function App() {
 
       <hr />
 
+      {selectedNote && (
+        <div className="detail">
+          <button onClick={() => setSelectedNote(null)}>閉じる</button>
+
+          <h2>{selectedNote.title}</h2>
+          <p>{selectedNote.category}</p>
+          <p>{selectedNote.summary}</p>
+
+          <h3>詳しい内容</h3>
+          <p>{selectedNote.content}</p>
+
+          <h3>コード例</h3>
+          <pre>{selectedNote.example_code}</pre>
+
+          <h3>メモ</h3>
+          <p>{selectedNote.memo}</p>
+        </div>
+      )}
+
       {studyNotes.map((note) => (
-        <div key={note.id} className="card">
+        <div
+          key={note.id}
+          className="card"
+          onClick={() => handleShowDetail(note.id)}
+        >
           <h2>{note.title}</h2>
           <p>{note.category}</p>
           <p>{note.summary}</p>
