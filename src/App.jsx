@@ -4,6 +4,7 @@ import "./App.css";
 
 function App() {
   const [studyNotes, setStudyNotes] = useState([]);
+  const [search, setSearch] = useState("");
   const [form, setForm] = useState({
     title: "",
     category: "",
@@ -13,8 +14,10 @@ function App() {
     memo: "",
   });
 
-  const fetchStudyNotes = async () => {
-    const res = await axios.get("http://localhost:8081/api/study-notes");
+  const fetchStudyNotes = async (keyword = "") => {
+    const res = await axios.get(
+      `http://localhost:8081/api/study-notes?search=${keyword}`
+    );
     setStudyNotes(res.data.data);
   };
 
@@ -43,12 +46,24 @@ function App() {
       memo: "",
     });
 
-    fetchStudyNotes();
+    fetchStudyNotes(search);
+  };
+
+  const handleSearch = (e) => {
+    setSearch(e.target.value);
+    fetchStudyNotes(e.target.value);
   };
 
   return (
     <div className="container">
       <h1>Study Note</h1>
+
+      <input
+        type="text"
+        placeholder="検索（Laravel / React / Docker）"
+        value={search}
+        onChange={handleSearch}
+      />
 
       <form onSubmit={handleSubmit}>
         <input
