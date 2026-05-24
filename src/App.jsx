@@ -89,6 +89,7 @@ function App() {
     });
 
     setSelectedNote(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleDelete = async (id) => {
@@ -172,29 +173,31 @@ function App() {
       <hr />
 
       {selectedNote && (
-        <div className="detail">
-          <div className="detail-buttons">
-            <button onClick={() => setSelectedNote(null)}>閉じる</button>
-            <button onClick={() => handleEdit(selectedNote)}>編集</button>
-            <button onClick={() => handleDelete(selectedNote.id)}>削除</button>
+        <div className="modal-overlay" onClick={() => setSelectedNote(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="detail-buttons">
+              <button onClick={() => setSelectedNote(null)}>閉じる</button>
+              <button onClick={() => handleEdit(selectedNote)}>編集</button>
+              <button onClick={() => handleDelete(selectedNote.id)}>削除</button>
+            </div>
+
+            <h2>{selectedNote.title}</h2>
+
+            {selectedNote.category && (
+              <span className="tag">{selectedNote.category}</span>
+            )}
+
+            <p>{selectedNote.summary}</p>
+
+            <h3>詳しい内容</h3>
+            <p>{selectedNote.content}</p>
+
+            <h3>コード例</h3>
+            <pre>{selectedNote.example_code}</pre>
+
+            <h3>メモ</h3>
+            <p>{selectedNote.memo}</p>
           </div>
-
-          <h2>{selectedNote.title}</h2>
-
-          {selectedNote.category && (
-            <span className="tag">{selectedNote.category}</span>
-          )}
-
-          <p>{selectedNote.summary}</p>
-
-          <h3>詳しい内容</h3>
-          <p>{selectedNote.content}</p>
-
-          <h3>コード例</h3>
-          <pre>{selectedNote.example_code}</pre>
-
-          <h3>メモ</h3>
-          <p>{selectedNote.memo}</p>
         </div>
       )}
 
