@@ -21,6 +21,7 @@ function App() {
     const res = await axios.get(
       `http://localhost:8081/api/study-notes?search=${keyword}`
     );
+
     setStudyNotes(res.data.data);
   };
 
@@ -37,6 +38,7 @@ function App() {
       example_code: "",
       memo: "",
     });
+
     setEditingId(null);
   };
 
@@ -51,7 +53,10 @@ function App() {
     e.preventDefault();
 
     if (editingId) {
-      await axios.put(`http://localhost:8081/api/study-notes/${editingId}`, form);
+      await axios.put(
+        `http://localhost:8081/api/study-notes/${editingId}`,
+        form
+      );
     } else {
       await axios.post("http://localhost:8081/api/study-notes", form);
     }
@@ -73,6 +78,7 @@ function App() {
 
   const handleEdit = (note) => {
     setEditingId(note.id);
+
     setForm({
       title: note.title || "",
       category: note.category || "",
@@ -81,6 +87,7 @@ function App() {
       example_code: note.example_code || "",
       memo: note.memo || "",
     });
+
     setSelectedNote(null);
   };
 
@@ -104,25 +111,59 @@ function App() {
 
       <input
         type="text"
+        className="search-input"
         placeholder="検索（Laravel / React / Docker）"
         value={search}
         onChange={handleSearch}
       />
 
       <form onSubmit={handleSubmit}>
-        <input name="title" placeholder="タイトル" value={form.title} onChange={handleChange} />
-        <input name="category" placeholder="カテゴリ" value={form.category} onChange={handleChange} />
-        <textarea name="summary" placeholder="ざっくり説明" value={form.summary} onChange={handleChange} />
-        <textarea name="content" placeholder="詳しい内容" value={form.content} onChange={handleChange} />
-        <textarea name="example_code" placeholder="コード例" value={form.example_code} onChange={handleChange} />
-        <textarea name="memo" placeholder="メモ" value={form.memo} onChange={handleChange} />
+        <input
+          name="title"
+          placeholder="タイトル"
+          value={form.title}
+          onChange={handleChange}
+        />
 
-        <button type="submit">
-          {editingId ? "更新" : "登録"}
-        </button>
+        <input
+          name="category"
+          placeholder="カテゴリ"
+          value={form.category}
+          onChange={handleChange}
+        />
+
+        <textarea
+          name="summary"
+          placeholder="ざっくり説明"
+          value={form.summary}
+          onChange={handleChange}
+        />
+
+        <textarea
+          name="content"
+          placeholder="詳しい内容"
+          value={form.content}
+          onChange={handleChange}
+        />
+
+        <textarea
+          name="example_code"
+          placeholder="コード例"
+          value={form.example_code}
+          onChange={handleChange}
+        />
+
+        <textarea
+          name="memo"
+          placeholder="メモ"
+          value={form.memo}
+          onChange={handleChange}
+        />
+
+        <button type="submit">{editingId ? "更新" : "登録"}</button>
 
         {editingId && (
-          <button type="button" onClick={resetForm}>
+          <button type="button" className="cancel-button" onClick={resetForm}>
             キャンセル
           </button>
         )}
@@ -132,12 +173,18 @@ function App() {
 
       {selectedNote && (
         <div className="detail">
-          <button onClick={() => setSelectedNote(null)}>閉じる</button>
-          <button onClick={() => handleEdit(selectedNote)}>編集</button>
-          <button onClick={() => handleDelete(selectedNote.id)}>削除</button>
+          <div className="detail-buttons">
+            <button onClick={() => setSelectedNote(null)}>閉じる</button>
+            <button onClick={() => handleEdit(selectedNote)}>編集</button>
+            <button onClick={() => handleDelete(selectedNote.id)}>削除</button>
+          </div>
 
           <h2>{selectedNote.title}</h2>
-          <p>{selectedNote.category}</p>
+
+          {selectedNote.category && (
+            <span className="tag">{selectedNote.category}</span>
+          )}
+
           <p>{selectedNote.summary}</p>
 
           <h3>詳しい内容</h3>
@@ -151,17 +198,21 @@ function App() {
         </div>
       )}
 
-      {studyNotes.map((note) => (
-        <div
-          key={note.id}
-          className="card"
-          onClick={() => handleShowDetail(note.id)}
-        >
-          <h2>{note.title}</h2>
-          <p>{note.category}</p>
-          <p>{note.summary}</p>
-        </div>
-      ))}
+      <div className="note-list">
+        {studyNotes.map((note) => (
+          <div
+            key={note.id}
+            className="card"
+            onClick={() => handleShowDetail(note.id)}
+          >
+            <h2>{note.title}</h2>
+
+            {note.category && <span className="tag">{note.category}</span>}
+
+            <p>{note.summary}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
