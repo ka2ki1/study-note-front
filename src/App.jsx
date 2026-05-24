@@ -6,6 +6,7 @@ function App() {
   const [studyNotes, setStudyNotes] = useState([]);
   const [search, setSearch] = useState("");
   const [selectedNote, setSelectedNote] = useState(null);
+  const [editingId, setEditingId] = useState(null);
 
   const [form, setForm] = useState({
     title: "",
@@ -27,6 +28,18 @@ function App() {
     fetchStudyNotes();
   }, []);
 
+  const resetForm = () => {
+    setForm({
+      title: "",
+      category: "",
+      summary: "",
+      content: "",
+      example_code: "",
+      memo: "",
+    });
+    setEditingId(null);
+  };
+
   const handleChange = (e) => {
     setForm({
       ...form,
@@ -37,18 +50,15 @@ function App() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    await axios.post("http://localhost:8081/api/study-notes", form);
+    if (editingId) {
+      await axios.put(`http://localhost:8081/api/study-notes/${editingId}`, form);
+    } else {
+      await axios.post("http://localhost:8081/api/study-notes", form);
+    }
 
-    setForm({
-      title: "",
-      category: "",
-      summary: "",
-      content: "",
-      example_code: "",
-      memo: "",
-    });
-
+    resetForm();
     fetchStudyNotes(search);
+    setSelectedNote(null);
   };
 
   const handleSearch = (e) => {
@@ -59,6 +69,19 @@ function App() {
   const handleShowDetail = async (id) => {
     const res = await axios.get(`http://localhost:8081/api/study-notes/${id}`);
     setSelectedNote(res.data);
+  };
+
+  const handleEdit = (note) => {
+    setEditingId(note.id);
+    setForm({
+      title: note.title || "",
+      category: note.category || "",
+      summary: note.summary || "",
+      content: note.content || "",
+      example_code: note.example_code || "",
+      memo: note.memo || "",
+    });
+    setSelectedNote(null);
   };
 
   return (
@@ -73,49 +96,22 @@ function App() {
       />
 
       <form onSubmit={handleSubmit}>
-        <input
-          name="title"
-          placeholder="タイトル"
-          value={form.title}
-          onChange={handleChange}
-        />
+        <input name="title" placeholder="タイトル" value={form.title} onChange={handleChange} />
+        <input name="category" placeholder="カテゴリ" value={form.category} onChange={handleChange} />
+        <textarea name="summary" placeholder="ざっくり説明" value={form.summary} onChange={handleChange} />
+        <textarea name="content" placeholder="詳しい内容" value={form.content} onChange={handleChange} />
+        <textarea name="example_code" placeholder="コード例" value={form.example_code} onChange={handleChange} />
+        <textarea name="memo" placeholder="メモ" value={form.memo} onChange={handleChange} />
 
-        <input
-          name="category"
-          placeholder="カテゴリ"
-          value={form.category}
-          onChange={handleChange}
-        />
+        <button type="submit">
+          {editingId ? "更新" : "登録"}
+        </button>
 
-        <textarea
-          name="summary"
-          placeholder="ざっくり説明"
-          value={form.summary}
-          onChange={handleChange}
-        />
-
-        <textarea
-          name="content"
-          placeholder="詳しい内容"
-          value={form.content}
-          onChange={handleChange}
-        />
-
-        <textarea
-          name="example_code"
-          placeholder="コード例"
-          value={form.example_code}
-          onChange={handleChange}
-        />
-
-        <textarea
-          name="memo"
-          placeholder="メモ"
-          value={form.memo}
-          onChange={handleChange}
-        />
-
-        <button type="submit">登録</button>
+        {editingId && (
+          <button type="button" onClick={resetForm}>
+            キャンセル
+          </button>
+        )}
       </form>
 
       <hr />
@@ -123,6 +119,7 @@ function App() {
       {selectedNote && (
         <div className="detail">
           <button onClick={() => setSelectedNote(null)}>閉じる</button>
+          <button onClick={() => handleEdit(selectedNote)}>編集</button>
 
           <h2>{selectedNote.title}</h2>
           <p>{selectedNote.category}</p>
