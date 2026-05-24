@@ -84,6 +84,20 @@ function App() {
     setSelectedNote(null);
   };
 
+  const handleDelete = async (id) => {
+    const result = window.confirm("このノートを削除しますか？");
+
+    if (!result) {
+      return;
+    }
+
+    await axios.delete(`http://localhost:8081/api/study-notes/${id}`);
+
+    setSelectedNote(null);
+    resetForm();
+    fetchStudyNotes(search);
+  };
+
   return (
     <div className="container">
       <h1>Study Note</h1>
@@ -120,6 +134,7 @@ function App() {
         <div className="detail">
           <button onClick={() => setSelectedNote(null)}>閉じる</button>
           <button onClick={() => handleEdit(selectedNote)}>編集</button>
+          <button onClick={() => handleDelete(selectedNote.id)}>削除</button>
 
           <h2>{selectedNote.title}</h2>
           <p>{selectedNote.category}</p>
