@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import ReactMarkdown from "react-markdown";
 import "./App.css";
 
 function App() {
@@ -95,9 +96,7 @@ function App() {
   const handleDelete = async (id) => {
     const result = window.confirm("このノートを削除しますか？");
 
-    if (!result) {
-      return;
-    }
+    if (!result) return;
 
     await axios.delete(`http://localhost:8081/api/study-notes/${id}`);
 
@@ -119,47 +118,12 @@ function App() {
       />
 
       <form onSubmit={handleSubmit}>
-        <input
-          name="title"
-          placeholder="タイトル"
-          value={form.title}
-          onChange={handleChange}
-        />
-
-        <input
-          name="category"
-          placeholder="カテゴリ"
-          value={form.category}
-          onChange={handleChange}
-        />
-
-        <textarea
-          name="summary"
-          placeholder="ざっくり説明"
-          value={form.summary}
-          onChange={handleChange}
-        />
-
-        <textarea
-          name="content"
-          placeholder="詳しい内容"
-          value={form.content}
-          onChange={handleChange}
-        />
-
-        <textarea
-          name="example_code"
-          placeholder="コード例"
-          value={form.example_code}
-          onChange={handleChange}
-        />
-
-        <textarea
-          name="memo"
-          placeholder="メモ"
-          value={form.memo}
-          onChange={handleChange}
-        />
+        <input name="title" placeholder="タイトル" value={form.title} onChange={handleChange} />
+        <input name="category" placeholder="カテゴリ" value={form.category} onChange={handleChange} />
+        <textarea name="summary" placeholder="ざっくり説明" value={form.summary} onChange={handleChange} />
+        <textarea name="content" placeholder="詳しい内容（Markdown OK）" value={form.content} onChange={handleChange} />
+        <textarea name="example_code" placeholder="コード例" value={form.example_code} onChange={handleChange} />
+        <textarea name="memo" placeholder="メモ（Markdown OK）" value={form.memo} onChange={handleChange} />
 
         <button type="submit">{editingId ? "更新" : "登録"}</button>
 
@@ -190,28 +154,26 @@ function App() {
             <p>{selectedNote.summary}</p>
 
             <h3>詳しい内容</h3>
-            <p>{selectedNote.content}</p>
+            <div className="markdown-body">
+              <ReactMarkdown>{selectedNote.content || ""}</ReactMarkdown>
+            </div>
 
             <h3>コード例</h3>
             <pre>{selectedNote.example_code}</pre>
 
             <h3>メモ</h3>
-            <p>{selectedNote.memo}</p>
+            <div className="markdown-body">
+              <ReactMarkdown>{selectedNote.memo || ""}</ReactMarkdown>
+            </div>
           </div>
         </div>
       )}
 
       <div className="note-list">
         {studyNotes.map((note) => (
-          <div
-            key={note.id}
-            className="card"
-            onClick={() => handleShowDetail(note.id)}
-          >
+          <div key={note.id} className="card" onClick={() => handleShowDetail(note.id)}>
             <h2>{note.title}</h2>
-
             {note.category && <span className="tag">{note.category}</span>}
-
             <p>{note.summary}</p>
           </div>
         ))}
