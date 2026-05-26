@@ -9,6 +9,8 @@ function App() {
   const [selectedNote, setSelectedNote] = useState(null);
   const [editingId, setEditingId] = useState(null);
 
+  const categories = ["Laravel", "React", "Docker", "Git"];
+
   const [form, setForm] = useState({
     title: "",
     category: "",
@@ -72,6 +74,16 @@ function App() {
     fetchStudyNotes(e.target.value);
   };
 
+  const handleCategoryClick = (category) => {
+    setSearch(category);
+    fetchStudyNotes(category);
+  };
+
+  const handleClearFilter = () => {
+    setSearch("");
+    fetchStudyNotes("");
+  };
+
   const handleShowDetail = async (id) => {
     const res = await axios.get(`http://localhost:8081/api/study-notes/${id}`);
     setSelectedNote(res.data);
@@ -117,13 +129,64 @@ function App() {
         onChange={handleSearch}
       />
 
+      <div className="category-buttons">
+        <button type="button" onClick={handleClearFilter}>
+          すべて
+        </button>
+
+        {categories.map((category) => (
+          <button
+            type="button"
+            key={category}
+            onClick={() => handleCategoryClick(category)}
+          >
+            {category}
+          </button>
+        ))}
+      </div>
+
       <form onSubmit={handleSubmit}>
-        <input name="title" placeholder="タイトル" value={form.title} onChange={handleChange} />
-        <input name="category" placeholder="カテゴリ" value={form.category} onChange={handleChange} />
-        <textarea name="summary" placeholder="ざっくり説明" value={form.summary} onChange={handleChange} />
-        <textarea name="content" placeholder="詳しい内容（Markdown OK）" value={form.content} onChange={handleChange} />
-        <textarea name="example_code" placeholder="コード例" value={form.example_code} onChange={handleChange} />
-        <textarea name="memo" placeholder="メモ（Markdown OK）" value={form.memo} onChange={handleChange} />
+        <input
+          name="title"
+          placeholder="タイトル"
+          value={form.title}
+          onChange={handleChange}
+        />
+
+        <input
+          name="category"
+          placeholder="カテゴリ"
+          value={form.category}
+          onChange={handleChange}
+        />
+
+        <textarea
+          name="summary"
+          placeholder="ざっくり説明"
+          value={form.summary}
+          onChange={handleChange}
+        />
+
+        <textarea
+          name="content"
+          placeholder="詳しい内容（Markdown OK）"
+          value={form.content}
+          onChange={handleChange}
+        />
+
+        <textarea
+          name="example_code"
+          placeholder="コード例"
+          value={form.example_code}
+          onChange={handleChange}
+        />
+
+        <textarea
+          name="memo"
+          placeholder="メモ（Markdown OK）"
+          value={form.memo}
+          onChange={handleChange}
+        />
 
         <button type="submit">{editingId ? "更新" : "登録"}</button>
 
@@ -171,9 +234,15 @@ function App() {
 
       <div className="note-list">
         {studyNotes.map((note) => (
-          <div key={note.id} className="card" onClick={() => handleShowDetail(note.id)}>
+          <div
+            key={note.id}
+            className="card"
+            onClick={() => handleShowDetail(note.id)}
+          >
             <h2>{note.title}</h2>
+
             {note.category && <span className="tag">{note.category}</span>}
+
             <p>{note.summary}</p>
           </div>
         ))}
