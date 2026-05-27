@@ -1,7 +1,55 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import ReactMarkdown from "react-markdown";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import "./App.css";
+
+function SortableNoteCard({ note, favorites, toggleFavorite, handleShowDetail }) {
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id: note.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="card">
+      <div className="card-header">
+        <button className="drag-handle" {...attributes} {...listeners}>
+          ☰
+        </button>
+
+        <h2 onClick={() => handleShowDetail(note.id)}>{note.title}</h2>
+
+        <button
+          className="favorite-button"
+          onClick={(e) => toggleFavorite(note.id, e)}
+        >
+          {favorites.includes(note.id) ? "⭐" : "☆"}
+        </button>
+      </div>
+
+      <div onClick={() => handleShowDetail(note.id)}>
+        {note.category && <span className="tag">{note.category}</span>}
+        <p>{note.summary}</p>
+      </div>
+    </div>
+  );
+}
 
 function App() {
   const [studyNotes, setStudyNotes] = useState([]);
@@ -10,8 +58,15 @@ function App() {
   const [editingId, setEditingId] = useState(null);
   const [favorites, setFavorites] = useState([]);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [sortType, setSortType] = useState("custom");
 
   const categories = ["Laravel", "React", "Docker", "Git"];
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    })
+  );
 
   const [form, setForm] = useState({
     title: "",
@@ -27,16 +82,33 @@ function App() {
 
     const savedFavorites =
       JSON.parse(localStorage.getItem("study-note-favorites")) || [];
-
     setFavorites(savedFavorites);
   }, []);
+
+  const applySavedOrder = (notes) => {
+    const savedOrder = JSON.parse(localStorage.getItem("study-note-order")) || [];
+
+    if (savedOrder.length === 0) {
+      return notes;
+    }
+
+    return [...notes].sort((a, b) => {
+      const indexA = savedOrder.indexOf(a.id);
+      const indexB = savedOrder.indexOf(b.id);
+
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+
+      return indexA - indexB;
+    });
+  };
 
   const fetchStudyNotes = async (keyword = "") => {
     const res = await axios.get(
       `http://localhost:8081/api/study-notes?search=${keyword}`
     );
 
-    setStudyNotes(res.data.data);
+    setStudyNotes(applySavedOrder(res.data.data));
   };
 
   const resetForm = () => {
@@ -142,9 +214,53 @@ function App() {
     );
   };
 
+  const handleSortChange = (e) => {
+    setSortType(e.target.value);
+  };
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    setSortType("custom");
+
+    setStudyNotes((notes) => {
+      const oldIndex = notes.findIndex((note) => note.id === active.id);
+      const newIndex = notes.findIndex((note) => note.id === over.id);
+
+      const newNotes = arrayMove(notes, oldIndex, newIndex);
+
+      localStorage.setItem(
+        "study-note-order",
+        JSON.stringify(newNotes.map((note) => note.id))
+      );
+
+      return newNotes;
+    });
+  };
+
   const filteredNotes = showFavoritesOnly
     ? studyNotes.filter((note) => favorites.includes(note.id))
     : studyNotes;
+
+  const sortedNotes = [...filteredNotes].sort((a, b) => {
+    if (sortType === "new") {
+      return new Date(b.created_at) - new Date(a.created_at);
+    }
+
+    if (sortType === "old") {
+      return new Date(a.created_at) - new Date(b.created_at);
+    }
+
+    if (sortType === "title") {
+      return a.title.localeCompare(b.title, "ja");
+    }
+
+    return 0;
+  });
 
   return (
     <div className="container">
@@ -181,48 +297,20 @@ function App() {
         </button>
       </div>
 
+      <select className="sort-select" value={sortType} onChange={handleSortChange}>
+        <option value="custom">手動並び順</option>
+        <option value="new">新しい順</option>
+        <option value="old">古い順</option>
+        <option value="title">タイトル順</option>
+      </select>
+
       <form onSubmit={handleSubmit}>
-        <input
-          name="title"
-          placeholder="タイトル"
-          value={form.title}
-          onChange={handleChange}
-        />
-
-        <input
-          name="category"
-          placeholder="カテゴリ"
-          value={form.category}
-          onChange={handleChange}
-        />
-
-        <textarea
-          name="summary"
-          placeholder="ざっくり説明"
-          value={form.summary}
-          onChange={handleChange}
-        />
-
-        <textarea
-          name="content"
-          placeholder="詳しい内容（Markdown OK）"
-          value={form.content}
-          onChange={handleChange}
-        />
-
-        <textarea
-          name="example_code"
-          placeholder="コード例"
-          value={form.example_code}
-          onChange={handleChange}
-        />
-
-        <textarea
-          name="memo"
-          placeholder="メモ（Markdown OK）"
-          value={form.memo}
-          onChange={handleChange}
-        />
+        <input name="title" placeholder="タイトル" value={form.title} onChange={handleChange} />
+        <input name="category" placeholder="カテゴリ" value={form.category} onChange={handleChange} />
+        <textarea name="summary" placeholder="ざっくり説明" value={form.summary} onChange={handleChange} />
+        <textarea name="content" placeholder="詳しい内容（Markdown OK）" value={form.content} onChange={handleChange} />
+        <textarea name="example_code" placeholder="コード例" value={form.example_code} onChange={handleChange} />
+        <textarea name="memo" placeholder="メモ（Markdown OK）" value={form.memo} onChange={handleChange} />
 
         <button type="submit">{editingId ? "更新" : "登録"}</button>
 
@@ -268,30 +356,28 @@ function App() {
         </div>
       )}
 
-      <div className="note-list">
-        {filteredNotes.map((note) => (
-          <div
-            key={note.id}
-            className="card"
-            onClick={() => handleShowDetail(note.id)}
-          >
-            <div className="card-header">
-              <h2>{note.title}</h2>
-
-              <button
-                className="favorite-button"
-                onClick={(e) => toggleFavorite(note.id, e)}
-              >
-                {favorites.includes(note.id) ? "⭐" : "☆"}
-              </button>
-            </div>
-
-            {note.category && <span className="tag">{note.category}</span>}
-
-            <p>{note.summary}</p>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={sortedNotes.map((note) => note.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="note-list">
+            {sortedNotes.map((note) => (
+              <SortableNoteCard
+                key={note.id}
+                note={note}
+                favorites={favorites}
+                toggleFavorite={toggleFavorite}
+                handleShowDetail={handleShowDetail}
+              />
+            ))}
           </div>
-        ))}
-      </div>
+        </SortableContext>
+      </DndContext>
     </div>
   );
 }
