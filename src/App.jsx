@@ -8,6 +8,8 @@ function App() {
   const [search, setSearch] = useState("");
   const [selectedNote, setSelectedNote] = useState(null);
   const [editingId, setEditingId] = useState(null);
+  const [favorites, setFavorites] = useState([]);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
   const categories = ["Laravel", "React", "Docker", "Git"];
 
@@ -20,6 +22,15 @@ function App() {
     memo: "",
   });
 
+  useEffect(() => {
+    fetchStudyNotes();
+
+    const savedFavorites =
+      JSON.parse(localStorage.getItem("study-note-favorites")) || [];
+
+    setFavorites(savedFavorites);
+  }, []);
+
   const fetchStudyNotes = async (keyword = "") => {
     const res = await axios.get(
       `http://localhost:8081/api/study-notes?search=${keyword}`
@@ -27,10 +38,6 @@ function App() {
 
     setStudyNotes(res.data.data);
   };
-
-  useEffect(() => {
-    fetchStudyNotes();
-  }, []);
 
   const resetForm = () => {
     setForm({
@@ -117,6 +124,28 @@ function App() {
     fetchStudyNotes(search);
   };
 
+  const toggleFavorite = (id, e) => {
+    e.stopPropagation();
+
+    let updatedFavorites;
+
+    if (favorites.includes(id)) {
+      updatedFavorites = favorites.filter((favId) => favId !== id);
+    } else {
+      updatedFavorites = [...favorites, id];
+    }
+
+    setFavorites(updatedFavorites);
+    localStorage.setItem(
+      "study-note-favorites",
+      JSON.stringify(updatedFavorites)
+    );
+  };
+
+  const filteredNotes = showFavoritesOnly
+    ? studyNotes.filter((note) => favorites.includes(note.id))
+    : studyNotes;
+
   return (
     <div className="container">
       <h1>Study Note</h1>
@@ -143,6 +172,13 @@ function App() {
             {category}
           </button>
         ))}
+
+        <button
+          type="button"
+          onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+        >
+          {showFavoritesOnly ? "すべて表示" : "お気に入りのみ"}
+        </button>
       </div>
 
       <form onSubmit={handleSubmit}>
@@ -233,13 +269,22 @@ function App() {
       )}
 
       <div className="note-list">
-        {studyNotes.map((note) => (
+        {filteredNotes.map((note) => (
           <div
             key={note.id}
             className="card"
             onClick={() => handleShowDetail(note.id)}
           >
-            <h2>{note.title}</h2>
+            <div className="card-header">
+              <h2>{note.title}</h2>
+
+              <button
+                className="favorite-button"
+                onClick={(e) => toggleFavorite(note.id, e)}
+              >
+                {favorites.includes(note.id) ? "⭐" : "☆"}
+              </button>
+            </div>
 
             {note.category && <span className="tag">{note.category}</span>}
 

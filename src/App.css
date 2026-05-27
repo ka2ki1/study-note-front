@@ -23,12 +23,24 @@ h1 {
 
 .search-input {
   width: 100%;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   padding: 14px;
   font-size: 15px;
   border: 1px solid #d1d5db;
   border-radius: 10px;
   background: white;
+}
+
+.category-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.category-buttons button {
+  background: #e5e7eb;
+  color: #111827;
 }
 
 input,
@@ -43,14 +55,14 @@ textarea {
 }
 
 textarea {
-  min-height: 120px;
+  min-height: 110px;
   resize: vertical;
 }
 
 form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   background: white;
   padding: 24px;
   border-radius: 16px;
@@ -69,10 +81,6 @@ button {
 button[type="submit"] {
   background: #2563eb;
   color: white;
-}
-
-button[type="submit"]:hover {
-  background: #1d4ed8;
 }
 
 .cancel-button {
@@ -104,9 +112,34 @@ hr {
   transform: translateY(-4px);
 }
 
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
 .card h2 {
-  margin-top: 0;
-  margin-bottom: 10px;
+  margin: 0 0 10px;
+}
+
+.favorite-button {
+  background: transparent;
+  border: none;
+  font-size: 26px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.tag {
+  display: inline-block;
+  background: #dbeafe;
+  color: #1d4ed8;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: bold;
+  margin-bottom: 12px;
 }
 
 .modal-overlay {
@@ -152,17 +185,6 @@ hr {
   color: white;
 }
 
-.tag {
-  display: inline-block;
-  background: #dbeafe;
-  color: #1d4ed8;
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: bold;
-  margin-bottom: 12px;
-}
-
 pre {
   background: #111827;
   color: white;
@@ -176,13 +198,6 @@ pre {
   line-height: 1.8;
 }
 
-.markdown-body h1,
-.markdown-body h2,
-.markdown-body h3 {
-  margin-top: 16px;
-  margin-bottom: 8px;
-}
-
 .markdown-body ul {
   padding-left: 24px;
 }
@@ -191,20 +206,4 @@ pre {
   background: #e5e7eb;
   padding: 2px 6px;
   border-radius: 6px;
-}
-
-.category-buttons {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 20px;
-}
-
-.category-buttons button {
-  background: #e5e7eb;
-  color: #111827;
-}
-
-.category-buttons button:hover {
-  background: #d1d5db;
 }
