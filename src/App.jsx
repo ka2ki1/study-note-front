@@ -59,6 +59,7 @@ function App() {
   const [favorites, setFavorites] = useState([]);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [sortType, setSortType] = useState("custom");
+  const [isOffline, setIsOffline] = useState(false);
 
   const categories = ["Laravel", "React", "Docker", "Git"];
 
@@ -86,7 +87,8 @@ function App() {
   }, []);
 
   const applySavedOrder = (notes) => {
-    const savedOrder = JSON.parse(localStorage.getItem("study-note-order")) || [];
+    const savedOrder =
+      JSON.parse(localStorage.getItem("study-note-order")) || [];
 
     if (savedOrder.length === 0) {
       return notes;
@@ -103,12 +105,52 @@ function App() {
     });
   };
 
-  const fetchStudyNotes = async (keyword = "") => {
-    const res = await axios.get(
-      `http://localhost:8081/api/study-notes?search=${keyword}`
-    );
+  const saveNotesCache = (notes) => {
+    localStorage.setItem("study-notes-cache", JSON.stringify(notes));
+  };
 
-    setStudyNotes(applySavedOrder(res.data.data));
+  const getNotesCache = () => {
+    return JSON.parse(localStorage.getItem("study-notes-cache")) || [];
+  };
+
+  const filterCachedNotes = (notes, keyword) => {
+    if (!keyword) {
+      return notes;
+    }
+
+    const lowerKeyword = keyword.toLowerCase();
+
+    return notes.filter((note) => {
+      return (
+        note.title?.toLowerCase().includes(lowerKeyword) ||
+        note.category?.toLowerCase().includes(lowerKeyword) ||
+        note.summary?.toLowerCase().includes(lowerKeyword) ||
+        note.content?.toLowerCase().includes(lowerKeyword) ||
+        note.memo?.toLowerCase().includes(lowerKeyword)
+      );
+    });
+  };
+
+  const fetchStudyNotes = async (keyword = "") => {
+    try {
+      const res = await axios.get(
+        `http://localhost:8081/api/study-notes?search=${keyword}`
+      );
+
+      const orderedNotes = applySavedOrder(res.data.data);
+
+      setStudyNotes(orderedNotes);
+      saveNotesCache(orderedNotes);
+      setIsOffline(false);
+    } catch (error) {
+      console.log("オフラインモード");
+
+      const cachedNotes = getNotesCache();
+      const filteredCachedNotes = filterCachedNotes(cachedNotes, keyword);
+
+      setStudyNotes(applySavedOrder(filteredCachedNotes));
+      setIsOffline(true);
+    }
   };
 
   const resetForm = () => {
@@ -164,8 +206,19 @@ function App() {
   };
 
   const handleShowDetail = async (id) => {
-    const res = await axios.get(`http://localhost:8081/api/study-notes/${id}`);
-    setSelectedNote(res.data);
+    try {
+      const res = await axios.get(`http://localhost:8081/api/study-notes/${id}`);
+      setSelectedNote(res.data);
+      setIsOffline(false);
+    } catch (error) {
+      const cachedNotes = getNotesCache();
+      const cachedNote = cachedNotes.find((note) => note.id === id);
+
+      if (cachedNote) {
+        setSelectedNote(cachedNote);
+        setIsOffline(true);
+      }
+    }
   };
 
   const handleEdit = (note) => {
@@ -238,6 +291,8 @@ function App() {
         JSON.stringify(newNotes.map((note) => note.id))
       );
 
+      saveNotesCache(newNotes);
+
       return newNotes;
     });
   };
@@ -265,6 +320,12 @@ function App() {
   return (
     <div className="container">
       <h1>Study Note</h1>
+
+      {isOffline && (
+        <div className="offline-banner">
+          オフライン表示中です。保存済みデータを表示しています。
+        </div>
+      )}
 
       <input
         type="text"
@@ -297,7 +358,11 @@ function App() {
         </button>
       </div>
 
-      <select className="sort-select" value={sortType} onChange={handleSortChange}>
+      <select
+        className="sort-select"
+        value={sortType}
+        onChange={handleSortChange}
+      >
         <option value="custom">手動並び順</option>
         <option value="new">新しい順</option>
         <option value="old">古い順</option>
@@ -305,12 +370,47 @@ function App() {
       </select>
 
       <form onSubmit={handleSubmit}>
-        <input name="title" placeholder="タイトル" value={form.title} onChange={handleChange} />
-        <input name="category" placeholder="カテゴリ" value={form.category} onChange={handleChange} />
-        <textarea name="summary" placeholder="ざっくり説明" value={form.summary} onChange={handleChange} />
-        <textarea name="content" placeholder="詳しい内容（Markdown OK）" value={form.content} onChange={handleChange} />
-        <textarea name="example_code" placeholder="コード例" value={form.example_code} onChange={handleChange} />
-        <textarea name="memo" placeholder="メモ（Markdown OK）" value={form.memo} onChange={handleChange} />
+        <input
+          name="title"
+          placeholder="タイトル"
+          value={form.title}
+          onChange={handleChange}
+        />
+
+        <input
+          name="category"
+          placeholder="カテゴリ"
+          value={form.category}
+          onChange={handleChange}
+        />
+
+        <textarea
+          name="summary"
+          placeholder="ざっくり説明"
+          value={form.summary}
+          onChange={handleChange}
+        />
+
+        <textarea
+          name="content"
+          placeholder="詳しい内容（Markdown OK）"
+          value={form.content}
+          onChange={handleChange}
+        />
+
+        <textarea
+          name="example_code"
+          placeholder="コード例"
+          value={form.example_code}
+          onChange={handleChange}
+        />
+
+        <textarea
+          name="memo"
+          placeholder="メモ（Markdown OK）"
+          value={form.memo}
+          onChange={handleChange}
+        />
 
         <button type="submit">{editingId ? "更新" : "登録"}</button>
 
