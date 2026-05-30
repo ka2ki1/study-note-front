@@ -377,12 +377,19 @@ function App() {
           onChange={handleChange}
         />
 
-        <input
+        <select
           name="category"
-          placeholder="カテゴリ"
           value={form.category}
           onChange={handleChange}
-        />
+          className="category-select"
+        >
+          <option value="">カテゴリを選択</option>
+          {categories.map((category) => (
+            <option key={category} value={category}>
+              {category}
+            </option>
+          ))}
+        </select>
 
         <textarea
           name="summary"

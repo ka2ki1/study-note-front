@@ -238,3 +238,14 @@ pre {
   margin-bottom: 16px;
   font-weight: bold;
 }
+
+.category-select {
+  width: 100%;
+  display: block;
+  padding: 14px;
+  font-size: 15px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: white;
+}
+
