@@ -46,6 +46,7 @@ function SortableNoteCard({ note, favorites, toggleFavorite, handleShowDetail })
       <div onClick={() => handleShowDetail(note.id)}>
         {note.category && <span className="tag">{note.category}</span>}
         <p>{note.summary}</p>
+        {note.image_data && <p>📷 画像あり</p>}
       </div>
     </div>
   );
@@ -60,6 +61,7 @@ function App() {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [sortType, setSortType] = useState("custom");
   const [isOffline, setIsOffline] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
 
   const categories = ["Laravel", "React", "Docker", "Git"];
 
@@ -76,6 +78,7 @@ function App() {
     content: "",
     example_code: "",
     memo: "",
+    image_data: "",
   });
 
   useEffect(() => {
@@ -90,9 +93,7 @@ function App() {
     const savedOrder =
       JSON.parse(localStorage.getItem("study-note-order")) || [];
 
-    if (savedOrder.length === 0) {
-      return notes;
-    }
+    if (savedOrder.length === 0) return notes;
 
     return [...notes].sort((a, b) => {
       const indexA = savedOrder.indexOf(a.id);
@@ -114,9 +115,7 @@ function App() {
   };
 
   const filterCachedNotes = (notes, keyword) => {
-    if (!keyword) {
-      return notes;
-    }
+    if (!keyword) return notes;
 
     const lowerKeyword = keyword.toLowerCase();
 
@@ -131,13 +130,31 @@ function App() {
     });
   };
 
+  const updateLocalNotes = (notes) => {
+    const orderedNotes = applySavedOrder(notes);
+    setStudyNotes(orderedNotes);
+    saveNotesCache(orderedNotes);
+  };
+
   const fetchStudyNotes = async (keyword = "") => {
     try {
       const res = await axios.get(
         `http://localhost:8081/api/study-notes?search=${keyword}`
       );
 
-      const orderedNotes = applySavedOrder(res.data.data);
+      const apiNotes = res.data.data;
+      const cachedNotes = getNotesCache();
+
+      const mergedNotes = apiNotes.map((apiNote) => {
+        const cachedNote = cachedNotes.find((note) => note.id === apiNote.id);
+
+        return {
+          ...apiNote,
+          image_data: apiNote.image_data || cachedNote?.image_data || "",
+        };
+      });
+
+      const orderedNotes = applySavedOrder(mergedNotes);
 
       setStudyNotes(orderedNotes);
       saveNotesCache(orderedNotes);
@@ -161,32 +178,143 @@ function App() {
       content: "",
       example_code: "",
       memo: "",
+      image_data: "",
     });
 
     setEditingId(null);
+    setImagePreview(null);
   };
 
   const handleChange = (e) => {
-    setForm({
-      ...form,
+    setForm((prevForm) => ({
+      ...prevForm,
       [e.target.name]: e.target.value,
-    });
+    }));
+  };
+
+  const handleImageFile = (file) => {
+    if (!file || !file.type.startsWith("image/")) {
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const base64Image = reader.result;
+
+      console.log("画像Base64作成OK", base64Image.slice(0, 50));
+
+      setImagePreview(base64Image);
+
+      setForm((prevForm) => ({
+        ...prevForm,
+        image_data: base64Image,
+      }));
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    handleImageFile(file);
+  };
+
+  const handlePasteImage = (e) => {
+    const items = e.clipboardData.items;
+
+    for (let item of items) {
+      if (item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        handleImageFile(file);
+        break;
+      }
+    }
+  };
+
+  const handleDropImage = (e) => {
+    e.preventDefault();
+
+    const file = e.dataTransfer.files[0];
+    handleImageFile(file);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const saveToCacheAfterApiSuccess = (savedNote) => {
+    const cachedNotes = getNotesCache();
+    const exists = cachedNotes.some((note) => note.id === savedNote.id);
+
+    const updatedNotes = exists
+      ? cachedNotes.map((note) => (note.id === savedNote.id ? savedNote : note))
+      : [savedNote, ...cachedNotes];
+
+    updateLocalNotes(updatedNotes);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (editingId) {
-      await axios.put(
-        `http://localhost:8081/api/study-notes/${editingId}`,
-        form
-      );
-    } else {
-      await axios.post("http://localhost:8081/api/study-notes", form);
+    console.log("送信するform", {
+      ...form,
+      image_data: form.image_data ? form.image_data.slice(0, 50) + "..." : "",
+    });
+
+    try {
+      if (editingId) {
+        const res = await axios.put(
+          `http://localhost:8081/api/study-notes/${editingId}`,
+          form
+        );
+
+        saveToCacheAfterApiSuccess(res.data);
+      } else {
+        const res = await axios.post(
+          "http://localhost:8081/api/study-notes",
+          form
+        );
+
+        saveToCacheAfterApiSuccess(res.data);
+      }
+
+      fetchStudyNotes(search);
+      setIsOffline(false);
+    } catch (error) {
+      const cachedNotes = getNotesCache();
+
+      if (editingId) {
+        const updatedNotes = cachedNotes.map((note) =>
+          note.id === editingId
+            ? {
+              ...note,
+              ...form,
+              updated_at: new Date().toISOString(),
+              is_offline: true,
+            }
+            : note
+        );
+
+        updateLocalNotes(updatedNotes);
+      } else {
+        const offlineNote = {
+          id: Date.now(),
+          ...form,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          is_offline: true,
+        };
+
+        const updatedNotes = [offlineNote, ...cachedNotes];
+
+        updateLocalNotes(updatedNotes);
+      }
+
+      setIsOffline(true);
     }
 
     resetForm();
-    fetchStudyNotes(search);
     setSelectedNote(null);
   };
 
@@ -208,7 +336,15 @@ function App() {
   const handleShowDetail = async (id) => {
     try {
       const res = await axios.get(`http://localhost:8081/api/study-notes/${id}`);
-      setSelectedNote(res.data);
+
+      const cachedNotes = getNotesCache();
+      const cachedNote = cachedNotes.find((note) => note.id === id);
+
+      setSelectedNote({
+        ...res.data,
+        image_data: res.data.image_data || cachedNote?.image_data || "",
+      });
+
       setIsOffline(false);
     } catch (error) {
       const cachedNotes = getNotesCache();
@@ -231,8 +367,10 @@ function App() {
       content: note.content || "",
       example_code: note.example_code || "",
       memo: note.memo || "",
+      image_data: note.image_data || "",
     });
 
+    setImagePreview(note.image_data || null);
     setSelectedNote(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -242,11 +380,20 @@ function App() {
 
     if (!result) return;
 
-    await axios.delete(`http://localhost:8081/api/study-notes/${id}`);
+    try {
+      await axios.delete(`http://localhost:8081/api/study-notes/${id}`);
+      fetchStudyNotes(search);
+      setIsOffline(false);
+    } catch (error) {
+      const cachedNotes = getNotesCache();
+      const updatedNotes = cachedNotes.filter((note) => note.id !== id);
+
+      updateLocalNotes(updatedNotes);
+      setIsOffline(true);
+    }
 
     setSelectedNote(null);
     resetForm();
-    fetchStudyNotes(search);
   };
 
   const toggleFavorite = (id, e) => {
@@ -274,9 +421,7 @@ function App() {
   const handleDragEnd = (event) => {
     const { active, over } = event;
 
-    if (!over || active.id === over.id) {
-      return;
-    }
+    if (!over || active.id === over.id) return;
 
     setSortType("custom");
 
@@ -323,7 +468,7 @@ function App() {
 
       {isOffline && (
         <div className="offline-banner">
-          オフライン表示中です。保存済みデータを表示しています。
+          オフラインモードです。localStorageのデータを使っています。
         </div>
       )}
 
@@ -419,6 +564,25 @@ function App() {
           onChange={handleChange}
         />
 
+        <div
+          className="image-upload-area"
+          onPaste={handlePasteImage}
+          onDrop={handleDropImage}
+          onDragOver={handleDragOver}
+          tabIndex="0"
+        >
+          <p>画像アップロード</p>
+          <p className="image-upload-help">
+            クリックして選択 / Ctrl + Vで貼り付け / ドラッグ&ドロップ
+          </p>
+
+          <input type="file" accept="image/*" onChange={handleImageChange} />
+
+          {imagePreview && (
+            <img src={imagePreview} alt="preview" className="preview-image" />
+          )}
+        </div>
+
         <button type="submit">{editingId ? "更新" : "登録"}</button>
 
         {editingId && (
@@ -439,13 +603,27 @@ function App() {
               <button onClick={() => handleDelete(selectedNote.id)}>削除</button>
             </div>
 
-            <h2>{selectedNote.title}</h2>
+            <h2>
+              {selectedNote.title}
+              {selectedNote.is_offline && "（オフライン保存）"}
+            </h2>
 
             {selectedNote.category && (
               <span className="tag">{selectedNote.category}</span>
             )}
 
             <p>{selectedNote.summary}</p>
+
+            {selectedNote.image_data && (
+              <>
+                <h3>画像</h3>
+                <img
+                  src={selectedNote.image_data}
+                  alt="note"
+                  className="detail-image"
+                />
+              </>
+            )}
 
             <h3>詳しい内容</h3>
             <div className="markdown-body">
